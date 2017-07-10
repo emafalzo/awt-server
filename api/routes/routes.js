@@ -6,6 +6,24 @@ module.exports = function(app) {
         task = require('../controllers/task'),
         worker = require('../controllers/worker');
 
+
+    // Add headers
+    app.use(function (req, res, next) {
+
+        // Website you wish to allow to connect
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        // Request methods you wish to allow
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+
+        // Request headers you wish to allow
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Access-Control-Allow-Methods ,Access-Control-Allow-Origin, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+
+        // Pass to next layer of middleware
+        next();
+    });
+
+
 //-----------------------    Clear Database    ---------------------------------
     app.route('/api')
         .delete(user.clear);  //to be removed
