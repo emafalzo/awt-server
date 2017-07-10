@@ -115,6 +115,9 @@ exports.info = function(req, res) {
 };
 
 exports.register = function(req, res) {
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
     // read headers
     head = header(req);
 
