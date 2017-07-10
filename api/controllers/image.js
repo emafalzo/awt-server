@@ -31,58 +31,6 @@ var storage =   multer.diskStorage({
 var upload = multer({ storage : storage}).any();
 
 exports.info = function(req,res){
-    Image.findById(req.params.id_image, function (err, image) {
-        if (err) {
-              res.status(500).json({error:'Internal server error'});
-        } else {
-
-              var temp = {};
-              temp.id = '/api/campaign/' + image._id_campaign + '/image/' + image._id ;
-              temp.canonical = '/image/' + image.canonical;
-              temp.statistics = '/api/campaign/' + image._id_campaign + '/image/' + image._id +'/statistics';
-              res.json(temp);
-
-        }
-    });
-};
-
-exports.statistics = function(req,res){
-    Image.findById(req.params.id_image, function (err, image) {
-        if (err) {
-              res.status(500).json({error:'Internal server error'});
-        } else {
-
-              var temp = {};
-              temp.selection =  image.selection;
-              temp.annotation = image.annotation;
-              res.json(temp);
-
-        }
-    });
-};
-
-exports.delete = function(req,res){
-    Image.findById(req.params.id_image, function (err, image) {
-        if (err) {
-              res.status(500).json({error:'Internal server error'});
-        } else {
-            Image.remove({ _id: req.params.id_image }, function(err) {
-              if (err) {
-                    res.status(500).json({error:'Internal server error'});
-              } else {
-                    var fs = require('fs');
-                    var filePath = './uploads/' + image.canonical;
-                    fs.unlinkSync(filePath);
-
-                    res.end('ok');
-              }
-          });
-        }
-    });
-
-};
-
-exports.list = function(req, res) {
 
     // read headers
     head = header(req);
@@ -91,81 +39,89 @@ exports.list = function(req, res) {
     if (head.APIToken){
 
         // find user with that APIToken
-        User.find({APIToken: head.APIToken}, function(err, user) {
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-          //error in the query (I hope never happen)
-          if (err){
+            if (user){
 
-              // anyway if it happens
-              res.status(500).json({error:' server error'});
+                Campaign.findById(req.params.id_campaign, function(err, campaign) {
 
-          } else {
+                    if (campaign) {
 
+                        Image.findById(req.params.id_image, function (err, image) {
 
-              if (user.length != 1){
+                            if (image) {
+                                  res.json({
+                                      id : '/api/campaign/' + image._id_campaign + '/image/' + image._id ,
+                                      canonical : '/image/' + image.canonical,
+                                      statistics : '/api/campaign/' + image._id_campaign + '/image/' + image._id +'/statistics'
+                                  });
+                            } else {
+                                  res.status(404).json({});
+                            }
 
-                  // raise 'Invalid Token' error
-                  res.status(401).json({error:'Invalid Token'});
+                        });
 
-              } else {
+                    } else {
 
-                  user = user[0];
+                        res.status(404).json({});
+                    }
+                });
+            } else {
+                // raise 'Invalid Token' error
+                res.status(401).json({error:'Invalid Token'});
+            }
 
-                  // find the campaign created by the user
-                  Campaign.find({_id_master : user._id, _id: req.params.id_campaign}, function(err, campaigns) {
-                      //error in the query (I hope never happen)
-                      if (err){
+        });
+    } else {
 
-                          // anyway if it happens
-                          res.status(500).json({error:'Internal server error'});
-
-                      } else {
-
-                          if (campaigns.length != 1){
-
-                              // raise 'Invalid Token' error
-                              res.status(401).json({error:'Invalid Token'});
-
-                          } else {
-
-
-
-
-                            Image.find({_id_campaign : req.params.id_campaign}, function(err, images) {
-                                //error in the query (I hope never happen)
-                                if (err){
-
-                                    // anyway if it happens
-                                    res.status(500).json({error:'Internal server error'});
-
-                                } else {
-
-                                    var response = {images : []};
+          // if the header does not contains an APIToken raise error
+          res.status(400).json({error:'Authorization Required'});
+    }
 
 
-                                    images.forEach(function(image) {
-                                        var temp = {};
-                                        temp.id = '/api/campaign/' + image._id_campaign + '/image/' + image._id ;
-                                        temp.canonical = '/image/' + image.canonical;
-                                        response.images.push(temp);
-                                    });
+};
 
-                                    res.json(response);
+exports.statistics = function(req,res){
+    // read headers
+    head = header(req);
 
-                                }
+    // if the header contains an APIToken
+    if (head.APIToken){
 
-                              });
+        // find user with that APIToken
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
 
+            if (user){
 
-                          }
-                      }
-                  });
+                Campaign.findById(req.params.id_campaign, function(err, campaign) {
 
-              }
+                    if (campaign) {
+console.log('si');
+                        Image.findById(req.params.id_image, function (err, image) {
+                            console.log(req.params.id_image);
+                            if (image) {
+                              console.log(image.annotation);
+                                  res.json({
+                                    selection :  image.selection,
+                                    annotation : image.annotation
+                                  });
+                            } else {
+                                  res.status(404).json({});
+                            }
 
-          }
-      });
+                        });
 
+                    } else {
+console.log('no');
+                        res.status(404).json({});
+                    }
+                });
+            } else {
+                // raise 'Invalid Token' error
+                res.status(401).json({error:'Invalid Token'});
+            }
+
+        });
     } else {
 
           // if the header does not contains an APIToken raise error
@@ -173,80 +129,196 @@ exports.list = function(req, res) {
     }
 };
 
+exports.delete = function(req,res){
+    // read headers
+    head = header(req);
+
+    // if the header contains an APIToken
+    if (head.APIToken){
+
+        // find user with that APIToken
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
+
+            if (user){
+
+                Campaign.findById(req.params.id_campaign, function(err, campaign) {
+
+                    if (campaign) {
+
+                        Image.findById(req.params.id_image, function (err, image) {
+
+                            if (image) {
+
+                                Image.remove({ _id: req.params.id_image }, function(err) {
+                                    if (err) {
+                                        res.status(500).json({error:'Internal server error'});
+                                    } else {
+
+                                        var fs = require('fs');
+                                        var filePath = './uploads/' + image.canonical;
+                                        fs.unlinkSync(filePath);
+
+                                        res.json({});
+                                    }
+                                });
+                            } else {
+                                  res.status(404).json({});
+                            }
+
+                        });
+
+                    } else {
+
+                        res.status(404).json({});
+                    }
+                });
+            } else {
+                // raise 'Invalid Token' error
+                res.status(401).json({error:'Invalid Token'});
+            }
+
+        });
+    } else {
+
+          // if the header does not contains an APIToken raise error
+          res.status(400).json({error:'Authorization Required'});
+    }
+
+
+
+};
+
+exports.list = function(req, res) {
+
+
+  // read headers
+  head = header(req);
+
+  // if the header contains an APIToken
+  if (head.APIToken){
+
+      // find user with that APIToken
+      User.findOne({APIToken: head.APIToken}, function(err, user) {
+
+          if (user){
+
+              Campaign.findById(req.params.id_campaign, function(err, campaign) {
+
+                  if (campaign) {
+
+                        Image.find({_id_campaign : req.params.id_campaign}, function(err, images) {
+                            //error in the query (I hope never happen)
+
+                            if (images) {
+                                var response = {images : []};
+
+                                images.forEach(function(image) {
+                                    response.images.push({
+                                        id : '/api/campaign/' + image._id_campaign + '/image/' + image._id ,
+                                        canonical : '/image/' + image.canonical
+                                    });
+                                });
+
+                                res.json(response);
+                            } else {
+                                res.status(404).json({});
+                            }
+
+
+                        });
+
+
+                  } else {
+
+                      res.status(404).json({});
+                  }
+              });
+          } else {
+              // raise 'Invalid Token' error
+              res.status(401).json({error:'Invalid Token'});
+          }
+
+      });
+  } else {
+
+        // if the header does not contains an APIToken raise error
+        res.status(400).json({error:'Authorization Required'});
+  }
+
+};
 
 exports.upload = function(req,res){
 
     upload(req,res,function(err) {
 
+
         if(err) {
             return res.json({error: 'Error uploading file'});
-        } else {
-
-            Campaign.find({_id: req.params.id_campaign}, function(err, campaigns) {
-                //error in the query (I hope never happen)
-                if (err){
-
-                    // anyway if it happens
-                    res.status(500).json({error:'Internal server error'});
-
-                } else {
-
-                    if (campaigns.length != 1){
-
-                        // raise 'Invalid Token' error
-                        res.status(401).json({error:'Invalid Token'});
-
-                    } else {
-
-
-                        req.files.forEach(function(file) {
-                            var image = {};
-
-                            image.canonical = file.filename;
-                            image._id_campaign = req.params.id_campaign;
-
-                            // create a new document campaign
-                            var new_image = new Image(image);
-
-                            // save the new campaign
-                            new_image.save();
-                        });
-
-                        res.json({bella:'raga'});
-
-                    }
-                }
-            });
-
-
         }
 
+      // read headers
+      head = header(req);
+
+      // if the header contains an APIToken
+      if (head.APIToken){
+
+          // find user with that APIToken
+          User.findOne({APIToken: head.APIToken}, function(err, user) {
+
+              if (user){
+
+                  Campaign.findById(req.params.id_campaign, function(err, campaign) {
+
+                      if (campaign) {
+
+                          req.files.forEach(function(file) {
+
+                              // create a new document campaign
+                              var new_image = new Image({
+                                  canonical : file.filename,
+                                  _id_campaign : req.params.id_campaign
+                              });
+
+                              // save the new campaign
+                              new_image.save();
+                          });
+
+                          res.json({bella:'raga'});
+
+                      } else {
+
+                          res.status(404).json({});
+                      }
+                  });
+              } else {
+                  // raise 'Invalid Token' error
+                  res.status(401).json({error:'Invalid Token'});
+              }
+
+          });
+      } else {
+
+            // if the header does not contains an APIToken raise error
+            res.status(400).json({error:'Authorization Required'});
+      }
     });
 };
 
-
 exports.serve = function(req,res){
 
-    Image.find({canonical : req.params.id_image}, function(err, image) {
+    Image.findOne({canonical: req.params.id_image}, function (err, image) {
 
-        if (err){
+        if (image) {
 
-            // anyway if it happens
-            res.status(500).json({error:'Internal server error'});
+            var img = fs.readFileSync('./uploads/' + req.params.id_image);
+            res.writeHead(200, {'Content-Type': 'image/jpg' });
+            res.end(img, 'binary');
 
         } else {
-
-            if (image.length != 1){
-
-                // raise 'Invalid Token' error
-                res.status(401).json({error:'Invalid Token'});
-
-            } else {
-
-                var img = fs.readFileSync('./uploads/' + req.params.id_image);
-                res.writeHead(200, {'Content-Type': 'image/jpg' });
-                res.end(img, 'binary');
-            }
+            res.status(404).json({});
         }
+
     });
+
+
 };

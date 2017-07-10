@@ -168,14 +168,14 @@ module.exports = function(app) {
 
         // Send the current result
         .put(task.result);
-/*
+
 
     app.route('/api/task/:id_task/statistics') //  <<task statistics url>>
 
         // Get task statistics
         .get(task.statistics);
 
-*/
+
 
 
 //-----------------------    Json SyntaxError Handling    ----------------------

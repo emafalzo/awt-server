@@ -20,120 +20,155 @@ var mongoose = require('mongoose'),
 
 
 exports.statistics = function(req,res){
-  Image.find({_id_campaign : req.params.id_campaign}, function(err, images) {
+  // read headers
+  head = header(req);
 
-      //error in the query (I hope never happen)
-      if (err){
+  // if the header contains an APIToken
+  if (head.APIToken){
 
-          // anyway if it happens
-          res.status(500).json({error:'Internal server error1'});
+      // find user with that APIToken
+      User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-      } else {
-          var response={};
-          response.images = images.length;
+          if (user){
 
-          var rejected = 0,
-          annotated=0,
-          accepted=0;
-        images.forEach(function(image) {
-            if (image.annotation.length>0){
-              annotated +=1;
-            }
-            rejected += image.selection.rejected;
-            accepted += image.selection.accepted;
-        });
-          response.annotated = annotated;
-          response.rejected = rejected;
-          response.accepted = accepted;
-          res.json(response);
-      }
-});
+              Campaign.findById(req.params.id_campaign, function(err, campaign) {
+
+                  if (campaign) {
+
+                      Image.find({_id_campaign : req.params.id_campaign}, function(err, images) {
+
+                          if (images) {
+
+                              var rejected = 0,
+                                  annotated = 0,
+                                  accepted = 0;
+
+                              images.forEach(function(image) {
+                                  annotated += image.annotation.length;
+                                  rejected += image.selection.rejected;
+                                  accepted += image.selection.accepted;
+                              });
+
+                              res.json({
+                                  images: images.length,
+                                  annotated : annotated,
+                                  rejected : rejected,
+                                  accepted : accepted
+                              });
+
+                          } else {
+
+                              res.status(404).json({});
+                          }
+                        //error in the query (I hope never happen)
+                      });
+
+                  } else {
+
+                      res.status(404).json({});
+                  }
+              });
+          } else {
+              // raise 'Invalid Token' error
+              res.status(401).json({error:'Invalid Token'});
+          }
+
+      });
+  } else {
+
+        // if the header does not contains an APIToken raise error
+        res.status(400).json({error:'Authorization Required'});
+  }
+
+
 };
 
 exports.start = function(req,res){
-    Campaign.findById(req.params.id_campaign, function(err, campaign) {
 
-        //error in the query (I hope never happen)
-        if (err){
+    // read headers
+    head = header(req);
 
-            // anyway if it happens
-            res.status(500).json({error:'Internal server error1'});
+    // if the header contains an APIToken
+    if (head.APIToken){
 
-        } else {
+        // find user with that APIToken
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-            // if no user has that APIToken
-            if (campaign === undefined){
+            if (user){
 
+                Campaign.findById(req.params.id_campaign, function(err, campaign) {
+
+                    if (campaign) {
+
+                        campaign.start(function(err,result){
+
+                            if (err){
+                                res.status(412).json({});
+                            } else {
+                                res.json({});
+                            }
+                        });
+
+                    } else {
+
+                        res.status(404).json({});
+                    }
+                });
+            } else {
                 // raise 'Invalid Token' error
                 res.status(401).json({error:'Invalid Token'});
-
-            } else {
-
-
-                  campaign.status = 'running';
-
-                  // save the new campaign
-                  campaign.save(function(err, user) {
-
-                      //error in the query (I hope never happen)
-                      if (err){
-
-                          // anyway if it happens
-                          res.status(500).json({error:'Internal server error2'});
-
-                      } else {
-
-                          // campaign registration done (empty response)
-                          res.json({});
-                      }
-                  });
-              }
-          }
+            }
 
         });
+    } else {
+
+          // if the header does not contains an APIToken raise error
+          res.status(400).json({error:'Authorization Required'});
+    }
 };
 
 exports.terminate = function(req,res){
-    Campaign.findById(req.params.id_campaign, function(err, campaign) {
 
-        //error in the query (I hope never happen)
-        if (err){
+    // read headers
+    head = header(req);
 
-            // anyway if it happens
-            res.status(500).json({error:'Internal server error3'});
+    // if the header contains an APIToken
+    if (head.APIToken){
 
-        } else {
+        // find user with that APIToken
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-            // if no user has that APIToken
-            if (campaign === undefined){
+            if (user){
 
+                Campaign.findById(req.params.id_campaign, function(err, campaign) {
+
+                    if (campaign) {
+
+                        campaign.terminate(function(err,result){
+
+                            if (err){
+                                res.status(412).json({});
+                            } else {
+                                res.json({});
+                            }
+                        });
+
+                    } else {
+
+                        res.status(404).json({});
+                    }
+                });
+            } else {
                 // raise 'Invalid Token' error
                 res.status(401).json({error:'Invalid Token'});
-
-            } else {
-
-
-                  campaign.status = 'ended';
-
-                  // save the new campaign
-                  campaign.save(function(err, user) {
-
-                      //error in the query (I hope never happen)
-                      if (err){
-
-                          // anyway if it happens
-                          res.status(500).json({error:'Internal server error4'});
-
-                      } else {
-
-                          // campaign registration done (empty response)
-                          res.json({});
-                      }
-                  });
-              }
-          }
+            }
 
         });
+    } else {
+
+          // if the header does not contains an APIToken raise error
+          res.status(400).json({error:'Authorization Required'});
+    }
 };
 
 exports.list = function(req, res) {
@@ -144,53 +179,33 @@ exports.list = function(req, res) {
     if (head.APIToken){
 
         // find user with that APIToken
-        User.find({APIToken: head.APIToken}, function(err, user) {
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-          //error in the query (I hope never happen)
-          if (err){
+          if (user) {
 
-              // anyway if it happens
-              res.status(500).json({error:'aaInternal server error5'});
+              Campaign.find({ _id_master : user._id}, function(err, campaigns) {
 
-          } else {
+                  if (campaigns){
 
-              if (user.length != 1){
+                      var response = {campaigns : []};
 
-                  // raise 'Invalid Token' error
-                  res.status(401).json({error:'Invalid Token'});
-
-              } else {
-
-                  user = user[0];
-
-                  // find the campaign created by the user
-                  Campaign.find({ _id_master : user._id}, function(err, campaigns) {
-                      //error in the query (I hope never happen)
-                      if (err){
-
-                          // anyway if it happens
-                          res.status(500).json({error:'Internal server error6'});
-
-                      } else {
-
-                          //build the response4
-
-                          var response = {campaigns : []};
-
-
-                          campaigns.forEach(function(campaign) {
-                              var temp = {};
-                              temp.id = '/api/campaign/' + campaign._id;
-                              temp.name = campaign.name;
-                              temp.status = campaign.status;
-                              response.campaigns.push(temp);
+                      campaigns.forEach(function(campaign) {
+                          response.campaigns.push({
+                              id : '/api/campaign/' + campaign._id,
+                              name : campaign.name,
+                              status : campaign.status
                           });
+                      });
 
-                          res.json(response);
-                      }
-                  });
-              }
+                      res.json(response);
+                  }
+
+              });
+          } else {
+              // raise 'Invalid Token' error
+              res.status(401).json({error:'Invalid Token'});
           }
+
       });
     } else {
 
@@ -198,9 +213,6 @@ exports.list = function(req, res) {
           res.status(400).json({error:'Authorization Required'});
     }
 };
-
-
-
 
 exports.create = function(req, res) {
     // read headers
@@ -210,116 +222,36 @@ exports.create = function(req, res) {
     if (head.APIToken){
 
         // find user with that APIToken
-        User.find({APIToken: head.APIToken}, function(err, user) {
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-            //error in the query (I hope never happen)
-            if (err){
+            if (user){
+                // add the id of the user who is creating the campaign to the parameters
+                req.body._id_master = user._id;
 
-                // anyway if it happens
-                res.status(500).json({error:'Internal server error7'});
+                // create a new document campaign
+                var new_campaign = new Campaign(req.body);
 
-            } else {
+                // save the new campaign
+                new_campaign.save(function(err, user) {
 
-                // if no user has that APIToken
-                if (user.length != 1){
+                    //error in the query (I hope never happen)
+                    if (err){
 
-                    // raise 'Invalid Token' error
-                    res.status(401).json({error:'Invalid Token'});
-
-                } else {
-
-                    var error = {error:{}};
-                    var errored = false;
-
-                    if (!req.body.name){
-                        errored = true;
-                        error.error.name = 'is required';
-                    } else if (req.body.name.length < 3) {
-                        errored = true;
-                        error.error.name = 'does not meet minimum length of 3';
-                    }
-
-                    if (!req.body.selection_replica){
-                        errored = true;
-                        error.error.selection_replica = 'is required';
-                    } else if (typeof req.body.selection_replica  !== 'number') {
-                        errored = true;
-                        error.error.selection_replica = 'is not of a type(s) integer';
-                    } else if (req.body.selection_replica  < 1) {
-                        errored = true;
-                        error.error.selection_replica = 'must have a minimum value of 1';
-                    }
-
-                    if (!req.body.threshold){
-                        errored = true;
-                        error.error.threshold = 'is required';
-                    } else if (typeof req.body.threshold  !== 'number') {
-                        errored = true;
-                        error.error.threshold = 'is not of a type(s) integer';
-                    } else if (req.body.threshold  < 1) {
-                        errored = true;
-                        error.error.threshold = 'must have a minimum value of 1';
-                    }
-
-                    if (!req.body.annotation_replica){
-                        errored = true;
-                        error.error.annotation_replica = 'is required';
-                    } else if (typeof req.body.annotation_replica  !== 'number') {
-                        errored = true;
-                        error.error.annotation_replica = 'is not of a type(s) integer';
-                    } else if (req.body.annotation_replica  < 1) {
-                        errored = true;
-                        error.error.annotation_replica = 'must have a minimum value of 1';
-                    }
-
-                    if (!req.body.annotation_size){
-                        errored = true;
-                        error.error.annotation_size = 'is required';
-                    } else if (typeof req.body.annotation_size  !== 'number') {
-                        errored = true;
-                        error.error.annotation_size = 'is not of a type(s) integer';
-                    } else if (req.body.annotation_size  < 1) {
-                        errored = true;
-                        error.error.annotation_size = 'must have a minimum value of 1';
-                    }
-
-                    // if there are some errors with parameters
-                    if (errored){
-
-                        // raise error and tell what is wrong
-                        res.status(400).json(error);
+                        // anyway if it happens
+                        res.status(400).json(JSON.parse(err.message));
 
                     } else {
 
-                        user = user[0];
-
-                        // add the status ready to the parameter
-                        req.body.status = 'ready';
-
-                        // add the id of the user who is creating the campaign to the parameters
-                        req.body._id_master = user._id;
-
-                        // create a new document campaign
-                        var new_campaign = new Campaign(req.body);
-
-                        // save the new campaign
-                        new_campaign.save(function(err, user) {
-
-                            //error in the query (I hope never happen)
-                            if (err){
-
-                                // anyway if it happens
-                                res.status(500).json({error:'Internal server error8'});
-
-                            } else {
-
-                                // campaign registration done (empty response)
-                                res.json({});
-                            }
-                        });
+                        // campaign registration done (empty response)
+                        res.json({});
                     }
-                }
+                });
+
+            } else {
+                // raise 'Invalid Token' error
+                res.status(401).json({error:'Invalid Token'});
             }
+
         });
     } else {
 
@@ -328,8 +260,8 @@ exports.create = function(req, res) {
     }
 };
 
-
 exports.change = function(req, res) {
+
     // read headers
     head = header(req);
 
@@ -337,149 +269,33 @@ exports.change = function(req, res) {
     if (head.APIToken){
 
         // find user with that APIToken
-        User.find({APIToken: head.APIToken}, function(err, user) {
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-            //error in the query (I hope never happen)
-            if (err){
+            if (user){
 
-                // anyway if it happens
-                res.status(500).json({error:'Internal server error9'});
+                Campaign.findById(req.params.id_campaign, function(err, campaign) {
 
-            } else {
+                    if (campaign) {
 
-                // if no user has that APIToken
-                if (user.length != 1){
+                        campaign.changeDetails(req.body, function(err,result){
 
-                    // raise 'Invalid Token' error
-                    res.status(401).json({error:'Invalid Token'});
-
-                } else {
-
-                    // find user with that APIToken
-                    Campaign.findById(req.params.id_campaign, function(err, campaign) {
-
-                        //error in the query (I hope never happen)
-                        if (err){
-
-                            // anyway if it happens
-                            res.status(500).json({error:'Internal server error10'});
-
-                        } else {
-
-                            // if no user has that APIToken
-                            if (campaign === undefined){
-
-                                // raise 'Invalid Token' error
-                                res.status(401).json({error:'Invalid Token'});
-
+                            if (err){
+                                res.status(400).json({error : JSON.parse(err.message)});
                             } else {
-
-                                var error = {error:{}};
-                                var errored = false;
-
-                                if (!req.body.name){
-                                    errored = true;
-                                    error.error.name = 'is required';
-                                } else if (req.body.name.length < 3) {
-                                    errored = true;
-                                    error.error.name = 'does not meet minimum length of 3';
-                                }
-
-                                if (!req.body.selection_replica){
-                                    errored = true;
-                                    error.error.selection_replica = 'is required';
-                                } else if (typeof req.body.selection_replica  !== 'number') {
-                                    errored = true;
-                                    error.error.selection_replica = 'is not of a type(s) integer';
-                                } else if (req.body.selection_replica  < 1) {
-                                    errored = true;
-                                    error.error.selection_replica = 'must have a minimum value of 1';
-                                }
-
-                                if (!req.body.threshold){
-                                    errored = true;
-                                    error.error.threshold = 'is required';
-                                } else if (typeof req.body.threshold  !== 'number') {
-                                    errored = true;
-                                    error.error.threshold = 'is not of a type(s) integer';
-                                } else if (req.body.threshold  < 1) {
-                                    errored = true;
-                                    error.error.threshold = 'must have a minimum value of 1';
-                                }
-
-                                if (!req.body.annotation_replica){
-                                    errored = true;
-                                    error.error.annotation_replica = 'is required';
-                                } else if (typeof req.body.annotation_replica  !== 'number') {
-                                    errored = true;
-                                    error.error.annotation_replica = 'is not of a type(s) integer';
-                                } else if (req.body.annotation_replica  < 1) {
-                                    errored = true;
-                                    error.error.annotation_replica = 'must have a minimum value of 1';
-                                }
-
-                                if (!req.body.annotation_size){
-                                    errored = true;
-                                    error.error.annotation_size = 'is required';
-                                } else if (typeof req.body.annotation_size  !== 'number') {
-                                    errored = true;
-                                    error.error.annotation_size = 'is not of a type(s) integer';
-                                } else if (req.body.annotation_size  < 1) {
-                                    errored = true;
-                                    error.error.annotation_size = 'must have a minimum value of 1';
-                                }
-
-                                // if there are some errors with parameters
-                                if (errored){
-
-                                    // raise error and tell what is wrong
-                                    res.status(400).json(error);
-
-                                } else {
-
-                                    console.log(campaign);
-                                    // update username and/or password
-                                    if (req.body.name){
-                                        campaign.name = req.body.name;
-                                    }
-                                    if (req.body.selection_replica){
-                                        campaign.selection_replica = req.body.selection_replica;
-                                    }
-                                    if (req.body.threshold){
-                                        campaign.threshold = req.body.threshold;
-                                    }
-                                    if (req.body.annotation_replica){
-                                        campaign.annotation_replica = req.body.annotation_replica;
-                                    }
-                                    if (req.body.annotation_size){
-                                        campaign.annotation_size = req.body.annotation_size;
-                                    }
-
-                                    // create a new document campaign
-                                    //var edited_campaign = new Campaign(req.body);
-
-                                    //console.log(edited_campaign);
-                                    // save the new campaign
-                                    campaign.save(function(err, user) {
-
-                                        //error in the query (I hope never happen)
-                                        if (err){
-
-                                            // anyway if it happens
-                                            res.status(500).json({error:'Internal server error11'});
-
-                                        } else {
-
-                                            // campaign registration done (empty response)
-                                            res.json({});
-                                        }
-                                    });
-                                }
+                                res.json({});
                             }
-                        }
-                    });
-                }
+                        });
+
+                    } else {
+
+                        res.status(404).json({});
+                    }
+                });
+            } else {
+                // raise 'Invalid Token' error
+                res.status(401).json({error:'Invalid Token'});
             }
+
         });
     } else {
 
@@ -487,7 +303,6 @@ exports.change = function(req, res) {
           res.status(400).json({error:'Authorization Required'});
     }
 };
-
 
 exports.info = function(req, res) {
     // read headers
@@ -497,49 +312,38 @@ exports.info = function(req, res) {
     if (head.APIToken){
 
         // find user with that APIToken
-        User.find({APIToken: head.APIToken}, function(err, user) {
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-            //error in the query (I hope never happen)
-            if (err){
+            if (user){
 
-                // anyway if it happens
-                res.status(500).json({error:'Internal server error12'});
-
-            } else {
-
-                console.log(req.params.id_campaign);
-                // find user with that APIToken
                 Campaign.findById(req.params.id_campaign, function(err, campaign) {
 
-                    //error in the query (I hope never happen)
-                    if (err){
+                    if (campaign) {
 
-                        // anyway if it happens
-                        res.status(500).json({error:'Internal server error13'});
+                      res.json({
+                          id : '/api/campaign/' + campaign._id,
+                          name :  campaign.name,
+                          status :  campaign.status,
+                          selection_replica :  parseInt(campaign.selection_replica),
+                          threshold :  parseInt(campaign.threshold),
+                          annotation_replica :  parseInt(campaign.annotation_replica),
+                          annotation_size :  parseInt(campaign.annotation_size),
+                          image :  '/api/campaign/' + campaign._id + '/image',
+                          worker :  '/api/campaign/' + campaign._id + '/worker',
+                          execution :  '/api/campaign/' + campaign._id + '/execution',
+                          statistics :  '/api/campaign/' + campaign._id + '/statistics'
+                      });
 
                     } else {
 
-                        console.log(campaign);
-                        // remove unnecessary attribute from user json object
-                        var response = {};
-                        response.id = '/api/campaign/' + campaign._id;
-                        response.name = campaign.name;
-                        response.status = campaign.status;
-                        response.selection_replica = campaign.selection_replica;
-                        response.threshold = campaign.threshold;
-                        response.annotation_replica = campaign.annotation_replica;
-                        response.annotation_size = campaign.annotation_size;
-                        response.image = '/api/campaign/' + campaign._id + '/image';
-                        response.worker = '/api/campaign/' + campaign._id + '/worker';
-                        response.execution = '/api/campaign/' + campaign._id + '/execution';
-                        response.statistics = '/api/campaign/' + campaign._id + '/statistics';
-
-                        // send the response with the new token
-                        res.json(response);
+                        res.status(404).json({});
                     }
-
                 });
+            } else {
+                // raise 'Invalid Token' error
+                res.status(401).json({error:'Invalid Token'});
             }
+
         });
     } else {
 

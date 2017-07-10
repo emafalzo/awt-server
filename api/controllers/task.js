@@ -23,298 +23,507 @@ MANCA CHE QUANDO IL TASK È FATTO DEVO CARICARE L'IMMAGE SUCCESSIVA!!!!!!!!!!!!!
       return {};
     }
 exports.list = function(req,res){
-  // read headers
-  head = header(req);
+
+    // read headers
+    head = header(req);
+
+    // if the header contains an APIToken
+    if (head.APIToken){
+
+        // find user with that APIToken
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
+
+            if (user){
+
+                  Task.find({_id_worker : user._id}, function(err, tasks) {
+
+                      if (tasks){
+
+                          var response = {tasks: []};
+
+                          tasks.forEach(function(task){
+
+                              if (task._id_campaign.status == 'started'){
+                                    response.tasks.push({
+                                        id : '/api/task/'+task._id,
+                                        type : task.type,
+                                    });
+                              }
+
+                          });
+
+                          res.json(response);
+
+                      } else {
+                          res.status(412).json({});
+                      }
+                  }).populate('_id_campaign');
 
 
-  // if the header contains an APIKey
-  if (head.APIToken){
-      User.find({APIToken: head.APIToken}, function(err, user) {
+            } else {
+            // raise 'Invalid Token' error
+                res.status(401).json({error:'Invalid Token'});
+            }
 
-          //error in the query (I hope never happen)
-          if (err){
-
-              // anyway if it happens
-              res.status(500).json({error:'Internal server error'});
-
-          } else {
-
-              var response = {tasks: []};
-              Task.find({_id_worker : user[0]._id}, function(err,tasks){
-                  tasks.forEach(function(task){
-                    var temp = {};
-                    temp.id = '/api/task/'+task._id;
-                    temp.type = task.type;
-                    response.tasks.push(temp);
-                  });
-                  res.json(response);
-              });
-
-          }
-      });
-
+        });
     } else {
 
-          // if the header does not contains an APIToken raise error
-          res.status(400).json({error:'Authorization Required'});
+        // if the header does not contains an APIToken raise error
+        res.status(400).json({error:'Authorization Required'});
     }
+
 };
 
 
 exports.info = function(req,res){
-  // read headers
-  head = header(req);
+
+    // read headers
+    head = header(req);
+
+    // if the header contains an APIToken
+    if (head.APIToken){
+
+        // find user with that APIToken
+        User.findOne({APIToken: head.APIToken}, function(err, user) {
+
+            if (user){
+
+                Task.findById(req.params.id_task, function(err,task){
+
+                    if (task){
+                        res.json({
+                          id : '/api/task/'+task._id,
+                          type : task.type,
+                          session : '/api/task/'+task._id + '/session',
+                          statistics : '/api/task/'+task._id + '/statistics'
+                        });
+                    } else {
+                        res.status(404).json({});
+                    }
+
+                });
 
 
-  // if the header contains an APIKey
-  if (head.APIToken){
-      User.find({APIToken: head.APIToken}, function(err, user) {
+            } else {
+            // raise 'Invalid Token' error
+                res.status(401).json({error:'Invalid Token'});
+            }
 
-          //error in the query (I hope never happen)
-          if (err){
-
-              // anyway if it happens
-              res.status(500).json({error:'Internal server error'});
-
-          } else {
-
-              var response = {tasks: []};
-              Task.findById(req.params.id_task, function(err,task){
-
-                    var temp = {};
-                    temp.id = '/api/task/'+task._id;
-                    temp.type = task.type;
-                    temp.session = temp.id + '/session';
-                    temp.statistics = temp.id + '/statistics';
-                  res.json(temp);
-              });
-
-          }
-      });
-
+        });
     } else {
 
-          // if the header does not contains an APIToken raise error
-          res.status(400).json({error:'Authorization Required'});
+        // if the header does not contains an APIToken raise error
+        res.status(400).json({error:'Authorization Required'});
     }
+
 };
 
 
 exports.start = function(req,res){
-  // read headers
-  head = header(req);
 
+      // read headers
+      head = header(req);
 
-  // if the header contains an APIKey
-  if (head.APIToken){
-      User.find({APIToken: head.APIToken}, function(err, user) {
+      // if the header contains an APIToken
+      if (head.APIToken){
 
-          //error in the query (I hope never happen)
-          if (err){
+          // find user with that APIToken
+          User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-              // anyway if it happens
-              res.status(500).json({error:'Internal server error'});
+              if (user){
 
-          } else {
-              console.log('ladro');
-              Task.findById(req.params.id_task, function(err,task){
+                  Task.findById(req.params.id_task, function(err,task){
 
-                if (err){
+                      if (task){
 
-                    // anyway if it happens
-                    res.status(500).json({error:'Internal server error'});
+                          if ((task.type == 'selection')){ //&& (task.current === null)){
+                              Image.find({_id_campaign:task._id_campaign}, function(err,images){
 
-                } else {
+                                  task.current = null;
 
-                    Image.find({_id_campaign:task._id_campaign}, function(err,images){
+                                  if (images){
 
-                      if (err){
+                                      var found = false;
 
-                          // anyway if it happens
-                          res.status(500).json({error:'Internal server error'});
+                                      images.forEach(function(image){
+                                          if (!found && !task._id_images.includes(image._id) && image.selection_replica < parseInt(task._id_campaign.selection_replica)){
+                                            found = true;
+                                            task.current = image._id;
+                                          }
+                                      });
+
+                                  }
+
+                                  task.save(function (err,up) {
+                                      if(err){
+                                          res.json(JSON.parse(err.message));
+                                      } else {
+                                          if(task.current === null){
+                                              res.status(404).json({});
+                                          } else {
+                                              res.json({});
+                                          }
+
+                                      }
+
+                                  });
+
+                              });
+
+                          } else if ((task.type == 'annotation')){ // && (task.current === null)) {
+
+                              Image.find({_id_campaign:task._id_campaign}, function(err,images){
+
+                                  task.current = null;
+
+                                  if (images){
+
+                                      var found = false;
+
+                                      images.forEach(function(image){
+                                          if (!found && !task._id_images.includes(image._id) && image.annotation_replica < parseInt(task._id_campaign.annotation_replica)  && image.threshold >= parseInt(task._id_campaign.threshold)){
+                                            found = true;
+                                            task.current = image._id;
+                                          }
+                                      });
+
+                                  }
+
+                                  task.save(function (err,up) {
+                                      if(err){
+                                          res.json(JSON.parse(err.message));
+                                      } else {
+                                          if(task.current === null){
+                                              res.status(404).json({});
+                                          } else {
+                                              res.json({});
+                                          }
+
+                                      }
+
+                                  });
+
+                              });
+
+                          } else {
+                              res.json({});
+                          }
 
                       } else {
-                          var found = false;
-                          images.forEach(function(image){
-                              if (!found && !task._id_images.includes(image._id)){
-                                found = true;
-                                task.current = image._id;
-                                task.done = false;
-
-                                task.save(function (err,up) {
-                                    //if (err) return handleError(err);
-                                    res.json(up);
-                                });
-
-                              }
-
-
-                          });
+                          res.status(404).json({});
                       }
-                });
+
+                  }).populate('_id_campaign');
+
+
+              } else {
+              // raise 'Invalid Token' error
+                  res.status(401).json({error:'Invalid Token'});
               }
-              });
 
-          }
-      });
-
-    } else {
+          });
+      } else {
 
           // if the header does not contains an APIToken raise error
           res.status(400).json({error:'Authorization Required'});
-    }
+      }
+
 };
 
 exports.next = function(req,res){
-  // read headers
-  head = header(req);
 
+        // read headers
+        head = header(req);
 
-  // if the header contains an APIKey
-  if (head.APIToken){
-      User.find({APIToken: head.APIToken}, function(err, user) {
+        // if the header contains an APIToken
+        if (head.APIToken){
 
-          //error in the query (I hope never happen)
-          if (err){
+            // find user with that APIToken
+            User.findOne({APIToken: head.APIToken}, function(err, user) {
 
-              // anyway if it happens
-              res.status(500).json({error:'Internal server error'});
+                if (user){
 
-          } else {
-              console.log('ladro');
-              Task.findById(req.params.id_task, function(err,task){
+                    Task.findById(req.params.id_task, function(err,task){
 
-                if (err){
+                        if (task && task.current !== null){
 
-                    // anyway if it happens
-                    res.status(500).json({error:'Internal server error'});
+                            Image.findById(task.current, function(err,image){
 
-                } else {
+                                if (image){
 
-                    Image.findById(task.current, function(err,image){
+                                    var temp={
+                                        image : '/image/' + image.canonical,
+                                        type : task.type
+                                    };
 
-                        if (err){
+                                    if (task.type == 'annotation'){
+                                        temp.size = parseInt(task._id_campaign.annotation_size);
+                                    }
 
-                            // anyway if it happens
-                            res.status(500).json({error:'Internal server error'});
+                                    res.json(temp);
+                                } else {
+                                    res.status(404).json({});
+                                }
+
+                            });
 
                         } else {
-
-                            var temp={};
-                            temp.id = '/image/' + image.canonical;
-                            temp.type = task.type;
-
-                            if (task.type == 'selection'){
-                                res.json(temp);
-
-                            }else{
-                                Campaign.findById(task._id_campaign, function(err,campaign){
-
-                                    if (err){
-
-                                        // anyway if it happens
-                                        res.status(500).json({error:'Internal server error'});
-
-                                    } else {
-
-                                        temp.size = campaign.annotation_size;
-                                        res.json(temp);
-                                    }
-                                });
-                            }
+                            res.status(404).json({});
                         }
-                    });
+
+                    }).populate('_id_campaign');
+
+
+                } else {
+                // raise 'Invalid Token' error
+                    res.status(401).json({error:'Invalid Token'});
                 }
 
             });
+        } else {
+
+            // if the header does not contains an APIToken raise error
+            res.status(400).json({error:'Authorization Required'});
         }
-
-      });
-
-    } else {
-
-          // if the header does not contains an APIToken raise error
-          res.status(400).json({error:'Authorization Required'});
-    }
 
 };
 
 
 exports.result = function(req,res){
 
-  // read headers
-  head = header(req);
+        // read headers
+        head = header(req);
+
+        // if the header contains an APIToken
+        if (head.APIToken){
+
+            // find user with that APIToken
+            User.findOne({APIToken: head.APIToken}, function(err, user) {
+
+                if (user){
+
+                    Task.findById(req.params.id_task, function(err,task){
+
+                        if (task){
+
+                            Image.findById(task.current, function(err,image){
+
+                                if (image){
+
+                                    task._id_images.push(task.current);
+
+                                    if (task.type == 'selection'){
+                                        if (req.body.accepted === true){
+                                            image.selection.accepted += 1;
+                                            task.accepted += 1;
+                                        }else {
+                                            image.selection.rejected += 1;
+                                            task.rejected += 1;
+                                        }
+
+                                    }else if (task.type == 'annotation') {
+                                        image.annotation.push(req.body.skyline);
+                                        task.annotated += 1;
+                                    }
 
 
-  // if the header contains an APIKey
-  if (head.APIToken){
-      User.find({APIToken: head.APIToken}, function(err, user) {
 
-          //error in the query (I hope never happen)
-          if (err){
+                                    image.save(function (err,up) {
 
-              // anyway if it happens
-              res.status(500).json({error:'Internal server error'});
+                                        if(err){
+                                            // anyway if it happens
+                                            res.status(500).json({error:'Internal server error'});
+                                        } else {
+                                          if ((task.type == 'selection')){
 
-          } else {
-              console.log('ladro');
-              Task.findById(req.params.id_task, function(err,task){
+                                              Image.find({_id_campaign:task._id_campaign}, function(err,images){
 
-                if (err){
+                                                  task.current = null;
 
-                    // anyway if it happens
-                    res.status(500).json({error:'Internal server error'});
+                                                  if (images){
 
-                } else {
+                                                      var found = false;
 
-                    Image.findById(task.current, function(err,image){
+                                                      images.forEach(function(image){
+                                                          if (!found && !task._id_images.includes(image._id) && image.selection_replica < parseInt(task._id_campaign.selection_replica)){
+                                                            found = true;
+                                                            task.current = image._id;
+                                                          }
+                                                      });
 
-                        if (err){
+                                                  }
 
-                            // anyway if it happens
-                            res.status(500).json({error:'Internal server error'});
+                                                  task.save(function (err,up) {
+                                                      if(err){
+                                                          res.json(JSON.parse(err.message));
+                                                      } else {
+                                                          if(task.current === null){
+                                                              res.status(404).json({});
+                                                          } else {
+                                                              res.json({});
+                                                          }
 
-                        } else {
+                                                      }
 
+                                                  });
 
-                            var temp={};
-                            temp.id = '/image/' + image.canonical;
-                            temp.type = task.type;
+                                              });
 
-                            if (task.type == 'selection'){
-                                if (req.body.accepted === true){
-                                    image.selection.accepted += 1;
-                                }else {
-                                    image.selection.rejected += 1;
+                                          } else if ((task.type == 'annotation')) {
+
+                                              Image.find({_id_campaign:task._id_campaign}, function(err,images){
+
+                                                  task.current = null;
+
+                                                  if (images){
+
+                                                      var found = false;
+
+                                                      images.forEach(function(image){
+                                                          if (!found && !task._id_images.includes(image._id) && image.annotation_replica < parseInt(task._id_campaign.annotation_replica)  && image.threshold >= parseInt(task._id_campaign.threshold)){
+                                                            found = true;
+                                                            task.current = image._id;
+                                                          }
+                                                      });
+
+                                                  }
+
+                                                  task.save(function (err,up) {
+                                                      if(err){
+                                                          res.json(JSON.parse(err.message));
+                                                      } else {
+                                                          if(task.current === null){
+                                                              res.status(404).json({});
+                                                          } else {
+                                                              res.json({});
+                                                          }
+
+                                                      }
+
+                                                  });
+
+                                              });
+
+                                          } else {
+                                              res.json({});
+                                          }
+                                        }
+
+                                    });
+                                } else {
+
                                 }
 
-                            }else if (task.type == 'selection') {
-                                image.annotation.push(req.body.annotation);
-                            }
-
-                            task.done = true;
-
-                            image.save(function (err,up) {
-                                //if (err) return handleError(err);
-                                task.save(function (err,up) {
-                                    //if (err) return handleError(err);
-                                    res.json(up);
-                                });
                             });
+
+                        } else {
+                            res.status(404).json({});
                         }
-                    });
+
+                    }).populate('_id_campaign');
+
+
+                } else {
+                // raise 'Invalid Token' error
+                    res.status(401).json({error:'Invalid Token'});
                 }
 
             });
+        } else {
+
+            // if the header does not contains an APIToken raise error
+            res.status(400).json({error:'Authorization Required'});
         }
 
-      });
+};
 
-    } else {
+exports.statistics = function(req,res){
 
-          // if the header does not contains an APIToken raise error
-          res.status(400).json({error:'Authorization Required'});
-    }
+        // read headers
+        head = header(req);
 
+        // if the header contains an APIToken
+        if (head.APIToken){
+
+            // find user with that APIToken
+            User.findOne({APIToken: head.APIToken}, function(err, user) {
+
+                if (user){
+
+                    Task.findById(req.params.id_task, function(err,task){
+
+                        if (task){
+
+                            if (task.type == 'selection'){
+
+                                Image.find({_id_campaign:task._id_campaign}, function(err,images){
+
+                                    if (images){
+
+                                        var count = 0;
+
+                                        images.forEach(function(image){
+                                            if (!task._id_images.includes(image._id) && image.selection_replica < parseInt(task._id_campaign.selection_replica)){
+                                                count +=1;
+                                            }
+                                        });
+
+                                        res.json({
+                                            available: count,
+                                            accepted: task.accepted,
+                                            rejected: task.rejected
+                                        });
+
+                                    } else {
+                                        res.status(404).json({});
+                                    }
+
+                                });
+
+                            } else if (task.type == 'annotation') {
+
+                                Image.find({_id_campaign:task._id_campaign}, function(err,images){
+
+                                    if (images){
+
+                                        var count = 0;
+
+                                        images.forEach(function(image){
+                                            if (!task._id_images.includes(image._id) && image.annotation_replica < parseInt(task._id_campaign.annotation_replica)  && image.threshold >= parseInt(task._id_campaign.threshold)){
+                                                count +=1;
+                                            }
+                                        });
+
+                                        res.json({
+                                            available: count,
+                                            annotated: task.annotated
+                                        });
+
+                                    } else {
+                                        res.status(404).json({});
+                                    }
+
+                                });
+
+                            } else {
+                                  res.status(404).json({});
+                            }
+                        } else {
+                              res.status(404).json({});
+                        }
+                    }).populate('_id_campaign');
+
+
+                } else {
+                // raise 'Invalid Token' error
+                    res.status(401).json({error:'Invalid Token'});
+                }
+
+            });
+        } else {
+
+            // if the header does not contains an APIToken raise error
+            res.status(400).json({error:'Authorization Required'});
+        }
 
 };
