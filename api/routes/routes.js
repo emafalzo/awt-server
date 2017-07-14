@@ -1,11 +1,9 @@
-'use strict';
 module.exports = function(app) {
     var user = require('../controllers/user'),
         campaign = require('../controllers/campaign'),
         image = require('../controllers/image'),
         task = require('../controllers/task'),
         worker = require('../controllers/worker');
-
 
     // Add headers
     app.use(function (req, res, next) {
@@ -24,16 +22,21 @@ module.exports = function(app) {
     });
 
 
-//-----------------------    Clear Database    ---------------------------------
-    app.route('/api')
-        .delete(user.clear);  //to be removed
+
+
+
+//-----------------------    Function for developers    ---------------------------------
+    app.route('/developers')
+        .delete(user.clear)  //to be removed
+
+        .get(user.listUsers);  //to be removed
+
 
 
 
 //-----------------------    User Functions Handling    ------------------------
 
     app.route('/api/user')
-        .get(user.listUsers)  //to be removed
 
         // Registration
         .post(user.register);
@@ -205,6 +208,7 @@ module.exports = function(app) {
             next();
         }
     });
+
 
 
 

@@ -1,9 +1,18 @@
 var express = require('express'),
-  app = express(),
-  port = process.env.PORT || 80,
-  mongoose = require('mongoose'),
-  models = require('./api/models/models'),
-  bodyParser = require('body-parser');
+    app = express(),
+    port = process.env.PORT || 4000,
+    mongoose = require('mongoose'),
+    models = require('./api/models'),
+    fs = require('fs');
+    bodyParser = require('body-parser');
+
+
+var dir = './uploads';
+
+if (!fs.existsSync(dir)){
+    fs.mkdirSync(dir);
+    console.log('Uploads directory created!');
+}
 
 mongoose.Promise = global.Promise;
 mongoose.connect('mongodb://localhost/Tododb');
