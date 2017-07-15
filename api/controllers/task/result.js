@@ -1,4 +1,5 @@
-var Repositories = require('../../repositories');
+var Repositories = require('../../repositories'),
+    includes = require('array-includes');
 
 function header(req, res){
     var auth = req.headers['authorization'];
@@ -83,7 +84,7 @@ module.exports = function(req, res) {
                                                                   if (task.type == 'selection'){
 
                                                                       images.forEach(function(image){
-                                                                          if (!found && task._id_images.indexOf(image._id) == -1 && image.selection_replica < parseInt(task._id_campaign.selection_replica)){
+                                                                          if (!found && !includes(task._id_images,image._id) && image.selection_replica < parseInt(task._id_campaign.selection_replica)){
                                                                             found = true;
                                                                             task.current = image._id;
                                                                           }
@@ -92,7 +93,7 @@ module.exports = function(req, res) {
                                                                   } else if (task.type == 'annotation'){ // && (task.current === null))) {
 
                                                                       images.forEach(function(image){
-                                                                          if (!found && task._id_images.indexOf(image._id) == -1 && image.annotation_replica < parseInt(task._id_campaign.annotation_replica)  && image.threshold >= parseInt(task._id_campaign.threshold)){
+                                                                          if (!found && !includes(task._id_images,image._id) && image.annotation_replica < parseInt(task._id_campaign.annotation_replica)  && image.threshold >= parseInt(task._id_campaign.threshold)){
                                                                             found = true;
                                                                             task.current = image._id;
                                                                           }
