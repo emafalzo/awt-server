@@ -1,4 +1,5 @@
-var Repositories = require('../../repositories');
+var Repositories = require('../../repositories'),
+    includes = require('array-includes');
 
 function header(req, res){
     var auth = req.headers['authorization'];
