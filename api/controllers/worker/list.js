@@ -37,7 +37,7 @@ module.exports = function(req, res) {
 
                               if (result.campaigns.length > 0){
 
-                                  Repositories.Users.find({type : 'worker'}, function(result) {
+                                  Repositories.Users.find({type : 'worker', APIKey : user.APIKey}, function(result) {
 
                                       if (result.success){
 

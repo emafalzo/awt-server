@@ -50,7 +50,7 @@ module.exports = function(req, res) {
                                               var count = 0;
 
                                               images.forEach(function(image){
-                                                  if (!task._id_images.includes(image._id) && image.selection_replica < parseInt(task._id_campaign.selection_replica)){
+                                                  if (!includes(task._id_images,image._id) && image.selection_replica < parseInt(task._id_campaign.selection_replica)){
                                                       count +=1;
                                                   }
                                               });
@@ -66,7 +66,7 @@ module.exports = function(req, res) {
                                               var count = 0;
 
                                               images.forEach(function(image){
-                                                  if (!task._id_images.includes(image._id) && image.annotation_replica < parseInt(task._id_campaign.annotation_replica)  && image.threshold >= parseInt(task._id_campaign.threshold)){
+                                                  if (!includes(task._id_images,image._id) && image.annotation_replica < parseInt(task._id_campaign.annotation_replica)  && image.threshold >= parseInt(task._id_campaign.threshold)){
                                                       count +=1;
                                                   }
                                               });
